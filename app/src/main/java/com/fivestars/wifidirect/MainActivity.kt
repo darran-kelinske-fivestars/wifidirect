@@ -78,7 +78,7 @@ class MainActivity : AppCompatActivity(), WifiP2pManager.ChannelListener,
     /** register the BroadcastReceiver with the intent values to be matched  */
     override fun onResume() {
         super.onResume()
-        receiver = WiFiDirectBroadcastReceiver(manager, channel, this)
+        receiver = channel?.let { WiFiDirectBroadcastReceiver(manager, it, this) }
         registerReceiver(receiver, intentFilter)
     }
 
@@ -155,9 +155,11 @@ class MainActivity : AppCompatActivity(), WifiP2pManager.ChannelListener,
     }
 
     override fun showDetails(device: WifiP2pDevice?) {
-        val fragment = getFragmentManager()
+        val fragment = fragmentManager
             .findFragmentById(R.id.frag_detail) as DeviceDetailFragment
-        fragment.showDetails(device)
+        if (device != null) {
+            fragment.showDetails(device)
+        }
     }
 
     override fun connect(config: WifiP2pConfig?) {
@@ -213,11 +215,11 @@ class MainActivity : AppCompatActivity(), WifiP2pManager.ChannelListener,
             val fragment = fragmentManager
                 .findFragmentById(R.id.frag_list) as DeviceListFragment
             if (fragment.device == null
-                || fragment.device.status == WifiP2pDevice.CONNECTED
+                || fragment.device!!.status == WifiP2pDevice.CONNECTED
             ) {
                 disconnect()
-            } else if (fragment.device.status == WifiP2pDevice.AVAILABLE
-                || fragment.device.status == WifiP2pDevice.INVITED
+            } else if (fragment.device!!.status == WifiP2pDevice.AVAILABLE
+                || fragment.device!!.status == WifiP2pDevice.INVITED
             ) {
                 manager!!.cancelConnect(channel, object : WifiP2pManager.ActionListener {
                     override fun onSuccess() {
