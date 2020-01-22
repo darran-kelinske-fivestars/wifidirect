@@ -48,14 +48,14 @@ class DeviceListFragment : ListFragment(), PeerListListener {
         private set
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
-        super.onActivityCreated(savedInstanceState)
+        super.onActivityCreated(savedInstanceState?: Bundle())
         this.listAdapter = WiFiPeerListAdapter(activity, R.layout.row_devices, peers)
     }
 
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
-        savedInstanceState: Bundle
+        savedInstanceState: Bundle?
     ): View? {
         mContentView = inflater.inflate(R.layout.device_list, null)
         return mContentView

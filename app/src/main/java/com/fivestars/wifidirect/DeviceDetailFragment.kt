@@ -46,13 +46,13 @@ class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
     private var info: WifiP2pInfo? = null
     var progressDialog: ProgressDialog? = null
     override fun onActivityCreated(savedInstanceState: Bundle?) {
-        super.onActivityCreated(savedInstanceState)
+        super.onActivityCreated(savedInstanceState?: Bundle())
     }
 
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
-        savedInstanceState: Bundle
+        savedInstanceState: Bundle?
     ): View? {
         mContentView = inflater.inflate(R.layout.device_detail, null)
         mContentView?.findViewById<View>(R.id.btn_connect)
