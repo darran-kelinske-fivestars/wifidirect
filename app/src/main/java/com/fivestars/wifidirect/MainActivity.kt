@@ -6,9 +6,13 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.net.wifi.WpsInfo
 import android.net.wifi.p2p.WifiP2pConfig
 import android.net.wifi.p2p.WifiP2pDevice
 import android.net.wifi.p2p.WifiP2pManager
+import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceInfo
+import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceRequest
+import android.net.wifi.p2p.nsd.WifiP2pServiceRequest
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
@@ -18,6 +22,7 @@ import android.view.MenuItem
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import kotlinx.android.synthetic.main.activity_main.*
 
 class MainActivity : AppCompatActivity(), WifiP2pManager.ChannelListener,
     DeviceListFragment.DeviceActionListener {
@@ -79,6 +84,17 @@ class MainActivity : AppCompatActivity(), WifiP2pManager.ChannelListener,
             .findFragmentById(R.id.frag_detail) as DeviceDetailFragment
         listFragment = fragmentManager
             .findFragmentById(R.id.frag_list) as DeviceListFragment
+
+        manager?.removeGroup(channel, null)
+        manager?.removeServiceRequest(channel, WifiP2pDnsSdServiceRequest.newInstance(), null)
+
+        start_service_button.setOnClickListener {
+            startRegistration()
+        }
+
+        discover_and_connect_button.setOnClickListener {
+            discoverService()
+        }
     }
 
     /** register the BroadcastReceiver with the intent values to be matched  */
@@ -161,7 +177,7 @@ class MainActivity : AppCompatActivity(), WifiP2pManager.ChannelListener,
     }
 
     override fun connect(config: WifiP2pConfig?) {
-        manager!!.connect(channel, config, object : WifiP2pManager.ActionListener {
+        manager?.connect(channel, config, object : WifiP2pManager.ActionListener {
             override fun onSuccess() { // WiFiDirectBroadcastReceiver will notify us. Ignore for now.
             }
 
@@ -235,6 +251,116 @@ class MainActivity : AppCompatActivity(), WifiP2pManager.ChannelListener,
                 })
             }
         }
+    }
+
+    private fun startRegistration() {
+        //  Create a string map containing information about your service.
+        val record: Map<String, String> = mapOf(
+            "listenport" to 7777.toString(),
+            "buddyname" to "John Doe${(Math.random() * 1000).toInt()}",
+            "available" to "visible"
+        )
+
+        // Service information.  Pass it an instance name, service type
+        // _protocol._transportlayer , and the map containing
+        // information other devices will want once they connect to this one.
+        val serviceInfo =
+            WifiP2pDnsSdServiceInfo.newInstance("_test", "_presence._tcp", record)
+
+        // Add the local service, sending the service info, network channel,
+        // and listener that will be used to indicate success or failure of
+        // the request.
+        manager?.addLocalService(channel, serviceInfo, object : WifiP2pManager.ActionListener {
+            override fun onSuccess() {
+                Log.e(TAG, "successfully registered service")
+                Toast.makeText(
+                    this@MainActivity, "successfully registered service",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+
+            override fun onFailure(arg0: Int) {
+                Log.e(TAG, "onFailure: $arg0")
+                Toast.makeText(
+                    this@MainActivity, "onFailure: $arg0",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        })
+    }
+
+
+    private val buddies = mutableMapOf<String, String>()
+
+    private fun discoverService() {
+        val serviceRequest = WifiP2pDnsSdServiceRequest.newInstance()
+        val txtListener = WifiP2pManager.DnsSdTxtRecordListener { fullDomain, record, device ->
+            Log.d(TAG, "DnsSdTxtRecord available -$record")
+            record["buddyname"]?.also {
+                buddies[device.deviceAddress] = it
+                val config = WifiP2pConfig()
+                config.deviceAddress = device!!.deviceAddress
+                config.wps.setup = WpsInfo.PBC
+                manager?.removeServiceRequest(channel, serviceRequest, object : WifiP2pManager.ActionListener {
+                    override fun onSuccess() {
+                        connect(config)
+                    }
+
+                    override fun onFailure(code: Int) {
+                        // Command failed.  Check for P2P_UNSUPPORTED, ERROR, or BUSY
+                    }
+                })
+
+            }
+        }
+
+
+        val servListener =
+            WifiP2pManager.DnsSdServiceResponseListener { instanceName, registrationType, resourceType ->
+                // Update the device name with the human-friendly version from
+                // the DnsTxtRecord, assuming one arrived.
+                resourceType.deviceName =
+                    buddies[resourceType.deviceAddress] ?: resourceType.deviceName
+
+                Log.d(TAG, "onBonjourServiceAvailable $instanceName")
+            }
+
+        manager?.setDnsSdResponseListeners(channel, servListener, txtListener)
+
+        manager?.addServiceRequest(
+            channel,
+            serviceRequest,
+            object : WifiP2pManager.ActionListener {
+                override fun onSuccess() {
+                    Log.e(TAG, "service request success")
+                }
+
+                override fun onFailure(code: Int) {
+                    // Command failed.  Check for P2P_UNSUPPORTED, ERROR, or BUSY
+                }
+            }
+        )
+
+        manager?.discoverServices(
+            channel,
+            object : WifiP2pManager.ActionListener {
+                override fun onSuccess() {
+                    Log.e(TAG, "discover service request")
+                }
+
+                override fun onFailure(code: Int) {
+                    // Command failed. Check for P2P_UNSUPPORTED, ERROR, or BUSY
+                    when (code) {
+                        WifiP2pManager.P2P_UNSUPPORTED -> {
+                            Log.d(TAG, "P2P isn't supported on this device.")
+                        }
+                    }
+                }
+            }
+        )
+
+
+
     }
 
     companion object {

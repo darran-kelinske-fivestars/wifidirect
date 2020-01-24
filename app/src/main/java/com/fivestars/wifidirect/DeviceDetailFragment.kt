@@ -17,8 +17,11 @@ package com.fivestars.wifidirect
 
 import android.app.Fragment
 import android.app.ProgressDialog
+import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
+import android.content.res.Resources
+import android.net.Uri
 import android.net.wifi.WpsInfo
 import android.net.wifi.p2p.WifiP2pConfig
 import android.net.wifi.p2p.WifiP2pDevice
@@ -35,6 +38,7 @@ import androidx.core.content.FileProvider
 import com.fivestars.wifidirect.DeviceListFragment.DeviceActionListener
 import java.io.*
 import java.net.ServerSocket
+
 
 /**
  * A fragment that manages a particular peer and allows interaction with device
@@ -76,30 +80,26 @@ class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
 //                            }
 //                        }
                 )
-                (activity as DeviceActionListener).connect(config)
+//                (activity as DeviceActionListener).connect(config)
             }
         mContentView?.findViewById<View>(R.id.btn_disconnect)
             ?.setOnClickListener { (activity as DeviceActionListener).disconnect() }
-        mContentView?.findViewById<View>(R.id.btn_start_client)?.setOnClickListener {
-            // Allow user to pick an image from Gallery or other
-// registered apps
-            val intent = Intent(Intent.ACTION_GET_CONTENT)
-            intent.type = "image/*"
-            startActivityForResult(
-                intent,
-                CHOOSE_FILE_RESULT_CODE
-            )
+        mContentView?.findViewById<View>(R.id.send_file_button)?.setOnClickListener {
+            sendFile()
         }
         return mContentView
     }
 
-    override fun onActivityResult(
-        requestCode: Int,
-        resultCode: Int,
-        data: Intent
-    ) { // User has picked an image. Transfer it to group owner i.e peer using
+    private fun sendFile() { // User has picked an image. Transfer it to group owner i.e peer using
 // FileTransferService.
-        val uri = data.data
+        val resources: Resources = context.resources
+        val uri = Uri.parse(
+            ContentResolver.SCHEME_ANDROID_RESOURCE + "://" + resources.getResourcePackageName(
+                R.drawable.fivestars_logo
+            ) + '/' + resources.getResourceTypeName(R.drawable.fivestars_logo) + '/' + resources.getResourceEntryName(
+                R.drawable.fivestars_logo
+            )
+        )
         val statusText =
             mContentView!!.findViewById<View>(R.id.status_text) as TextView
         statusText.text = "Sending: $uri"
@@ -142,7 +142,7 @@ class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
                 .execute()
         } else if (info.groupFormed) { // The other device acts as the client. In this case, we enable the
 // get file button.
-            mContentView!!.findViewById<View>(R.id.btn_start_client).visibility = View.VISIBLE
+            mContentView!!.findViewById<View>(R.id.send_file_button).visibility = View.VISIBLE
             (mContentView!!.findViewById<View>(R.id.status_text) as TextView).text = resources
                 .getString(R.string.client_text)
         }
@@ -179,7 +179,7 @@ class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
         view.setText(R.string.empty)
         view = mContentView!!.findViewById<View>(R.id.status_text) as TextView
         view.setText(R.string.empty)
-        mContentView!!.findViewById<View>(R.id.btn_start_client).visibility = View.GONE
+        mContentView!!.findViewById<View>(R.id.send_file_button).visibility = View.GONE
         view.visibility = View.GONE
     }
 

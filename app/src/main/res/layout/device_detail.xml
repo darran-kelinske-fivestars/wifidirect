@@ -27,10 +27,10 @@
                 android:layout_height="wrap_content"
                 android:text="@string/disconnect_peer_button" />
             <Button
-                android:id="@+id/btn_start_client"
+                android:id="@+id/send_file_button"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/get_file_button"
+                android:text="@string/send_file_button"
                 android:visibility="gone" />
         </LinearLayout>
         <TextView
