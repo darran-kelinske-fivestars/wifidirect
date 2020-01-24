@@ -33,9 +33,15 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.core.content.FileProvider
 import com.fivestars.wifidirect.DeviceListFragment.DeviceActionListener
+import kotlinx.android.synthetic.main.device_detail.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.*
 import java.net.ServerSocket
 
@@ -104,15 +110,10 @@ class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
             mContentView!!.findViewById<View>(R.id.status_text) as TextView
         statusText.text = "Sending: $uri"
         Log.d(MainActivity.TAG, "Intent----------- $uri")
-        val serviceIntent = Intent(activity, FileTransferService::class.java)
-        serviceIntent.action = FileTransferService.Companion.ACTION_SEND_FILE
-        serviceIntent.putExtra(FileTransferService.Companion.EXTRAS_FILE_PATH, uri.toString())
-        serviceIntent.putExtra(
-            FileTransferService.Companion.EXTRAS_GROUP_OWNER_ADDRESS,
-            info!!.groupOwnerAddress.hostAddress
-        )
-        serviceIntent.putExtra(FileTransferService.Companion.EXTRAS_GROUP_OWNER_PORT, 8988)
-        activity.startService(serviceIntent)
+
+        GlobalScope.launch(Dispatchers.IO) {
+            FileTransferService.sendFile(context, uri.toString(), info!!.groupOwnerAddress.hostAddress, 8988)
+        }
     }
 
     override fun onConnectionInfoAvailable(info: WifiP2pInfo) {
@@ -130,14 +131,15 @@ class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
         ))
         // InetAddress from WifiP2pInfo struct.
         view = mContentView!!.findViewById<View>(R.id.device_info) as TextView
-        view.text = "Group Owner IP - " + info.groupOwnerAddress.hostAddress
+        view.text = "Group Owner IP - " + info.groupOwnerAddress?.hostAddress
         // After the group negotiation, we assign the group owner as the file
 // server. The file server is single threaded, single connection server
 // socket.
         if (info.groupFormed && info.isGroupOwner) {
             FileServerAsyncTask(
                 activity,
-                mContentView!!.findViewById(R.id.status_text)
+                mContentView!!.findViewById(R.id.status_text),
+                received_image_image_view
             )
                 .execute()
         } else if (info.groupFormed) { // The other device acts as the client. In this case, we enable the
@@ -189,7 +191,8 @@ class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
      */
     class FileServerAsyncTask(
         private val context: Context,
-        statusText: View
+        statusText: View,
+        private val receivedImageView: ImageView
     ) : AsyncTask<Void?, Void?, String?>() {
         private val statusText: TextView = statusText as TextView
         protected override fun doInBackground(vararg params: Void?): String? {
@@ -230,11 +233,7 @@ class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
                     "com.fivestars.wifidirect.fileprovider",
                     recvFile
                 )
-                val intent = Intent()
-                intent.action = Intent.ACTION_VIEW
-                intent.setDataAndType(fileUri, "image/*")
-                intent.flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
-                context.startActivity(intent)
+                receivedImageView.setImageURI(fileUri)
             }
         }
 

@@ -35,9 +35,5 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/provider_paths" />
         </provider>
-
-        <!-- Used for transferring files  after a successful connection -->
-        <service android:enabled="true" android:name=".FileTransferService" />
-
     </application>
 </manifest>

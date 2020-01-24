@@ -32,6 +32,11 @@
                 android:layout_height="wrap_content"
                 android:text="@string/send_file_button"
                 android:visibility="gone" />
+            <ImageView
+                android:id="@+id/received_image_image_view"
+                android:layout_width="70dp"
+                android:layout_height="70dp"
+                />
         </LinearLayout>
         <TextView
             android:id="@+id/device_address"
