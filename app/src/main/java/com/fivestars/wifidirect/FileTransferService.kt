@@ -17,28 +17,29 @@ import java.net.Socket
  * socket connection with the WiFi Direct Group Owner and writing the file
  */
 object FileTransferService {
+    val socket = Socket()
+    private const val SOCKET_TIMEOUT = 0
 
-    private const val SOCKET_TIMEOUT = 5000
+    fun sendFile(host: String, port: Int) {
 
-    fun sendFile(context: Context, fileUri: String, host: String, port: Int) {
-            val socket = Socket()
             try {
                 Log.d(MainActivity.TAG, "Opening client socket - ")
-                socket.bind(null)
-                socket.connect(
-                    InetSocketAddress(host, port),
-                    SOCKET_TIMEOUT
-                )
+                if (!socket.isBound) {
+                    socket.bind(null)
+                }
+
+                if (!socket.isConnected) {
+                    socket.connect(
+                        InetSocketAddress(host, port),
+                        SOCKET_TIMEOUT
+                    )
+                }
                 Log.d(MainActivity.TAG, "Client socket - " + socket.isConnected)
                 val stream = socket.getOutputStream()
-                val cr = context.contentResolver
-                var `is`: InputStream? = null
-                try {
-                    `is` = cr.openInputStream(Uri.parse(fileUri))
-                } catch (e: FileNotFoundException) {
-                    Log.d(MainActivity.TAG, e.toString())
-                }
-                DeviceDetailFragment.Companion.copyFile(`is`, stream)
+
+                val byteArray = "texting over wifi direct".toByteArray()
+                var len: Int = byteArray.size
+                stream.write(byteArray, 0, len)
                 Log.d(MainActivity.TAG, "Client: Data written")
             } catch (e: IOException) {
                 Log.e(MainActivity.TAG, e.message)
@@ -46,7 +47,7 @@ object FileTransferService {
                 if (socket != null) {
                     if (socket.isConnected) {
                         try {
-                            socket.close()
+                            //socket.close()
                         } catch (e: IOException) { // Give up
                             e.printStackTrace()
                         }

@@ -9,16 +9,16 @@
         android:layout_height="0dp"
         android:layout_weight="1"
         android:orientation="vertical">
-        <Button
-            android:id="@+id/start_service_button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Start Service"/>
+<!--        <Button-->
+<!--            android:id="@+id/start_service_button"-->
+<!--            android:layout_width="wrap_content"-->
+<!--            android:layout_height="wrap_content"-->
+<!--            android:text="Start Service"/>-->
         <Button
             android:id="@+id/discover_and_connect_button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Discover and Connect to Service"/>
+            android:text="Discover and Connect to Peer"/>
 </LinearLayout>
     <LinearLayout
         android:layout_width="match_parent"
