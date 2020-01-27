@@ -167,7 +167,7 @@ class DeviceListFragment : ListFragment(), PeerListListener {
      */
     interface DeviceActionListener {
         fun showDetails(device: WifiP2pDevice?)
-        fun cancelDisconnect()
+        fun cancelConnect()
         fun connect(config: WifiP2pConfig?)
         fun disconnect()
     }

@@ -11,6 +11,7 @@ import android.net.wifi.p2p.WifiP2pDevice
 import android.net.wifi.p2p.WifiP2pManager
 import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceInfo
 import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceRequest
+import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
@@ -51,7 +52,7 @@ class MainActivity : AppCompatActivity(), WifiP2pManager.ChannelListener,
     ) {
         when (requestCode) {
             PERMISSIONS_REQUEST_CODE_ACCESS_FINE_LOCATION -> if (grantResults[0] != PackageManager.PERMISSION_GRANTED) {
-                Log.e(Companion.TAG, "Fine location permission is not granted!")
+                Log.e(TAG, "Fine location permission is not granted!")
                 finish()
             }
         }
@@ -67,28 +68,21 @@ class MainActivity : AppCompatActivity(), WifiP2pManager.ChannelListener,
         intentFilter.addAction(WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION)
         manager = getSystemService(Context.WIFI_P2P_SERVICE) as WifiP2pManager?
         channel = manager!!.initialize(this, mainLooper, null)
-        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
-            != PackageManager.PERMISSION_GRANTED
-        ) {
-            requestPermissions(
-                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
-                PERMISSIONS_REQUEST_CODE_ACCESS_FINE_LOCATION
-            )
-            // After this point you wait for callback in
-// onRequestPermissionsResult(int, String[], int[]) overridden method
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED
+            ) {
+                requestPermissions(
+                    arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+                    PERMISSIONS_REQUEST_CODE_ACCESS_FINE_LOCATION
+                )
+            }
         }
 
         detailsFragment = fragmentManager
             .findFragmentById(R.id.frag_detail) as DeviceDetailFragment
         listFragment = fragmentManager
             .findFragmentById(R.id.frag_list) as DeviceListFragment
-
-        manager?.removeGroup(channel, null)
-        manager?.removeServiceRequest(channel, WifiP2pDnsSdServiceRequest.newInstance(), null)
-
-//        start_service_button.setOnClickListener {
-//            startRegistration()
-//        }
 
         discover_and_connect_button.setOnClickListener {
             discoverPeers()
@@ -98,7 +92,15 @@ class MainActivity : AppCompatActivity(), WifiP2pManager.ChannelListener,
     /** register the BroadcastReceiver with the intent values to be matched  */
     override fun onResume() {
         super.onResume()
-        receiver = channel?.let { WiFiDirectBroadcastReceiver(manager, it, this, detailsFragment, listFragment) }
+        receiver = channel?.let {
+            WiFiDirectBroadcastReceiver(
+                manager,
+                it,
+                this,
+                detailsFragment,
+                listFragment
+            )
+        }
         registerReceiver(receiver, intentFilter)
     }
 
@@ -107,10 +109,6 @@ class MainActivity : AppCompatActivity(), WifiP2pManager.ChannelListener,
         unregisterReceiver(receiver)
     }
 
-    /**
-     * Remove all peers and clear all fields. This is called on
-     * BroadcastReceiver receiving a state change event.
-     */
     fun resetData() {
         listFragment?.clearPeers()
         detailsFragment?.resetViews()
@@ -122,22 +120,8 @@ class MainActivity : AppCompatActivity(), WifiP2pManager.ChannelListener,
         return true
     }
 
-    /*
-     * (non-Javadoc)
-     * @see android.app.Activity#onOptionsItemSelected(android.view.MenuItem)
-     */
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
-            R.id.atn_direct_enable -> {
-                if (manager != null && channel != null) { // Since this is the system wireless settings activity, it's
-                    // not going to send us a result. We will be notified by
-                    // WiFiDeviceBroadcastReceiver instead.
-                    startActivity(Intent(Settings.ACTION_WIRELESS_SETTINGS))
-                } else {
-                    Log.e(Companion.TAG, "channel or manager is null")
-                }
-                true
-            }
             R.id.atn_direct_discover -> {
                 if (!isWifiP2pEnabled) {
                     Toast.makeText(
@@ -176,7 +160,7 @@ class MainActivity : AppCompatActivity(), WifiP2pManager.ChannelListener,
 
     override fun connect(config: WifiP2pConfig?) {
         manager?.connect(channel, config, object : WifiP2pManager.ActionListener {
-            override fun onSuccess() { // WiFiDirectBroadcastReceiver will notify us. Ignore for now.
+            override fun onSuccess() {
             }
 
             override fun onFailure(reason: Int) {
@@ -192,7 +176,7 @@ class MainActivity : AppCompatActivity(), WifiP2pManager.ChannelListener,
         detailsFragment?.resetViews()
         manager!!.removeGroup(channel, object : WifiP2pManager.ActionListener {
             override fun onFailure(reasonCode: Int) {
-                Log.d(Companion.TAG, "Disconnect failed. Reason :$reasonCode")
+                Log.d(TAG, "Disconnect failed. Reason :$reasonCode")
             }
 
             override fun onSuccess() {
@@ -201,7 +185,7 @@ class MainActivity : AppCompatActivity(), WifiP2pManager.ChannelListener,
         })
     }
 
-    override fun onChannelDisconnected() { // we will try once more
+    override fun onChannelDisconnected() {
         if (manager != null && !retryChannel) {
             Toast.makeText(this, "Channel lost. Trying again", Toast.LENGTH_LONG).show()
             resetData()
@@ -216,75 +200,33 @@ class MainActivity : AppCompatActivity(), WifiP2pManager.ChannelListener,
         }
     }
 
-    override fun cancelDisconnect() { /*
-         * A cancel abort request by user. Disconnect i.e. removeGroup if
-         * already connected. Else, request WifiP2pManager to abort the ongoing
-         * request
-         */
-        if (manager != null) {
-            val fragment = fragmentManager
-                .findFragmentById(R.id.frag_list) as DeviceListFragment
-            if (fragment.device == null
-                || fragment.device!!.status == WifiP2pDevice.CONNECTED
-            ) {
-                disconnect()
-            } else if (fragment.device!!.status == WifiP2pDevice.AVAILABLE
-                || fragment.device!!.status == WifiP2pDevice.INVITED
-            ) {
-                manager!!.cancelConnect(channel, object : WifiP2pManager.ActionListener {
-                    override fun onSuccess() {
-                        Toast.makeText(
-                            this@MainActivity, "Aborting connection",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
+    override fun cancelConnect() {
+        val fragment = fragmentManager
+            .findFragmentById(R.id.frag_list) as DeviceListFragment
+        if (fragment.device == null
+            || fragment.device!!.status == WifiP2pDevice.CONNECTED
+        ) {
+            disconnect()
+        } else if (fragment.device!!.status == WifiP2pDevice.AVAILABLE
+            || fragment.device!!.status == WifiP2pDevice.INVITED
+        ) {
+            manager?.cancelConnect(channel, object : WifiP2pManager.ActionListener {
+                override fun onSuccess() {
+                    Toast.makeText(
+                        this@MainActivity, "Aborting connection",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
 
-                    override fun onFailure(reasonCode: Int) {
-                        Toast.makeText(
-                            this@MainActivity,
-                            "Connect abort request failed. Reason Code: $reasonCode",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                })
-            }
+                override fun onFailure(reasonCode: Int) {
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Connect abort request failed. Reason Code: $reasonCode",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            })
         }
-    }
-
-    private fun startRegistration() {
-        //  Create a string map containing information about your service.
-        val record: Map<String, String> = mapOf(
-            "listenport" to 7777.toString(),
-            "buddyname" to "John Doe${(Math.random() * 1000).toInt()}",
-            "available" to "visible"
-        )
-
-        // Service information.  Pass it an instance name, service type
-        // _protocol._transportlayer , and the map containing
-        // information other devices will want once they connect to this one.
-        val serviceInfo =
-            WifiP2pDnsSdServiceInfo.newInstance("_test", "_presence._tcp", record)
-
-        // Add the local service, sending the service info, network channel,
-        // and listener that will be used to indicate success or failure of
-        // the request.
-        manager?.addLocalService(channel, serviceInfo, object : WifiP2pManager.ActionListener {
-            override fun onSuccess() {
-                Log.e(TAG, "successfully registered service")
-                Toast.makeText(
-                    this@MainActivity, "successfully registered service",
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
-
-            override fun onFailure(arg0: Int) {
-                Log.e(TAG, "onFailure: $arg0")
-                Toast.makeText(
-                    this@MainActivity, "onFailure: $arg0",
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
-        })
     }
 
     private fun discoverPeers() {
@@ -307,6 +249,6 @@ class MainActivity : AppCompatActivity(), WifiP2pManager.ChannelListener,
     }
 
     companion object {
-        public const val TAG = "wifidirectdemo"
+        const val TAG = "wifidirectdemo"
     }
 }
