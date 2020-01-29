@@ -17,13 +17,9 @@ package com.fivestars.wifidirect
 
 import android.app.Fragment
 import android.app.ProgressDialog
-import android.net.wifi.WpsInfo
-import android.net.wifi.p2p.WifiP2pConfig
-import android.net.wifi.p2p.WifiP2pDevice
 import android.net.wifi.p2p.WifiP2pInfo
 import android.net.wifi.p2p.WifiP2pManager.ConnectionInfoListener
 import android.os.Bundle
-import android.os.Message
 import android.util.Log
 import android.view.KeyEvent
 import android.view.LayoutInflater
@@ -37,8 +33,6 @@ import com.fivestars.wifidirect.MainActivity.Companion.TAG
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.collect
-import java.io.IOException
-import java.net.ServerSocket
 
 
 open class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
@@ -47,9 +41,9 @@ open class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
     private var outStringBuffer: StringBuffer? = null
 
     private var contentView: View? = null
-    private var device: WifiP2pDevice? = null
     private var info: WifiP2pInfo? = null
     private var progressDialog: ProgressDialog? = null
+    private var job: Job? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -77,10 +71,9 @@ open class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
                 info.groupOwnerAddress.hostAddress,
                 8988)
         }
-
-        GlobalScope.launch(Dispatchers.Main) {
+        job = CoroutineScope(Dispatchers.Main).launch {
             MessageUtil.channel.asFlow().collect {
-                conversationArrayAdapter?.add("Them $it")
+                conversationArrayAdapter?.add("Them: $it")
             }
         }
     }
@@ -89,23 +82,24 @@ open class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
      * Clears the UI fields after a disconnect or direct mode disable operation.
      */
     fun resetViews() {
-        contentView!!.findViewById<View>(R.id.button_send).visibility = View.GONE
+        job?.cancel()
         view?.visibility = View.GONE
     }
 
     private fun setupChat(contentView: View) {
         Log.d(TAG, "setupChat()")
-        conversationArrayAdapter = ArrayAdapter<String>(context, R.layout.message)
+        conversationArrayAdapter = ArrayAdapter(context, R.layout.message)
         val mConversationView = contentView.findViewById<View>(R.id.`in`) as ListView
         mConversationView.adapter = conversationArrayAdapter
         outEditText = contentView.findViewById<View>(R.id.edit_text_out) as EditText
         outEditText?.setOnEditorActionListener(mWriteListener)
-        val mSendButton = contentView.findViewById<View>(R.id.button_send) as Button
-        mSendButton.setOnClickListener(View.OnClickListener {
+        val sendButton = contentView.findViewById<View>(R.id.button_send) as Button
+        sendButton.visibility = View.VISIBLE
+        sendButton.setOnClickListener {
             val view = contentView.findViewById<View>(R.id.edit_text_out) as TextView
             val message = view.text.toString()
             sendMessage(message)
-        })
+        }
         outStringBuffer = StringBuffer("")
     }
 
@@ -122,7 +116,7 @@ open class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
 
     private fun sendMessage(message: String) {
         if (message.isNotEmpty()) {
-            GlobalScope.launch(Dispatchers.IO) {
+            CoroutineScope(Dispatchers.IO).launch {
                 MessageUtil.sendMessage(
                     message
                 )

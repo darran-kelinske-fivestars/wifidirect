@@ -10,11 +10,13 @@ import android.net.wifi.p2p.WifiP2pDevice
 import android.net.wifi.p2p.WifiP2pManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Message
 import android.util.Log
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import kotlinx.android.synthetic.main.activity_main.*
+import kotlinx.android.synthetic.main.row_devices.*
 
 class MainActivity : AppCompatActivity(), WifiP2pManager.ChannelListener,
     DeviceListFragment.DeviceActionListener {
@@ -126,10 +128,13 @@ class MainActivity : AppCompatActivity(), WifiP2pManager.ChannelListener,
         manager!!.removeGroup(channel, object : WifiP2pManager.ActionListener {
             override fun onFailure(reasonCode: Int) {
                 Log.d(TAG, "Disconnect failed. Reason :$reasonCode")
+                MessageUtil.closeSocket()
             }
 
             override fun onSuccess() {
                 detailsFragment?.view!!.visibility = View.GONE
+                MessageUtil.closeSocket()
+
             }
         })
     }
