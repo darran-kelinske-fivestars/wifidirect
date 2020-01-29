@@ -6,25 +6,19 @@
     android:layout_height="match_parent">
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
+        android:layout_height="wrap_content"
         android:orientation="vertical">
-<!--        <Button-->
-<!--            android:id="@+id/start_service_button"-->
-<!--            android:layout_width="wrap_content"-->
-<!--            android:layout_height="wrap_content"-->
-<!--            android:text="Start Service"/>-->
         <Button
-            android:id="@+id/discover_and_connect_button"
+            android:id="@+id/discover_peers_button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Discover and Connect to Peer"/>
+            android:text="Discover Peers"/>
 </LinearLayout>
     <LinearLayout
         android:layout_width="match_parent"
         android:id="@+id/linearLayout1"
         android:layout_height="0dp"
-        android:layout_weight="3"
+        android:layout_weight="1"
         android:orientation="vertical">
         <fragment
             class="com.fivestars.wifidirect.DeviceListFragment"
@@ -32,7 +26,6 @@
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1">
-            <!-- Preview: layout=@layout/row_devices -->
         </fragment>
         <fragment
             class="com.fivestars.wifidirect.DeviceDetailFragment"
@@ -40,7 +33,6 @@
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1">
-            <!-- Preview: layout=@layout/device_detail -->
         </fragment>
     </LinearLayout>
 </LinearLayout>

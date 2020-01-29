@@ -54,23 +54,6 @@ open class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
         savedInstanceState: Bundle?
     ): View? {
         contentView = inflater.inflate(R.layout.device_detail, null)
-        contentView?.findViewById<View>(R.id.btn_connect)
-            ?.setOnClickListener {
-                val config = WifiP2pConfig()
-                config.deviceAddress = device!!.deviceAddress
-                config.wps.setup = WpsInfo.PBC
-                if (progressDialog != null && progressDialog!!.isShowing) {
-                    progressDialog!!.dismiss()
-                }
-                progressDialog = ProgressDialog.show(
-                    activity,
-                    "Press back to cancel",
-                    "Connecting to :" + device!!.deviceAddress,
-                    true,
-                    true
-                    ) { (activity as DeviceActionListener).cancelConnect() }
-                (activity as DeviceActionListener).connect(config)
-            }
         contentView?.findViewById<View>(R.id.btn_disconnect)
             ?.setOnClickListener { (activity as DeviceActionListener).disconnect() }
 
@@ -84,15 +67,6 @@ open class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
         }
         this.info = info
         this.view?.visibility = View.VISIBLE
-        var view =
-            contentView!!.findViewById<View>(R.id.group_owner) as TextView
-        view.text = (resources.getString(R.string.group_owner_text)
-                + if (info.isGroupOwner == true) resources.getString(R.string.yes) else resources.getString(
-            R.string.no
-        ))
-        view = contentView!!.findViewById<View>(R.id.device_info) as TextView
-        view.text = "Group Owner IP - " + info.groupOwnerAddress?.hostAddress
-
         if (info.groupFormed && info.isGroupOwner) {
             GlobalScope.launch(newSingleThreadContext("IncomingSocket")) {
                 val buffer = ByteArray(1024)
@@ -121,47 +95,15 @@ open class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
                     }
                 }
             }
-
-        } else if (info.groupFormed) {
-            contentView!!.findViewById<View>(R.id.button_send).visibility = View.VISIBLE
-            (contentView!!.findViewById<View>(R.id.status_text) as TextView).text = resources
-                .getString(R.string.client_text)
         }
-        // hide the connect button
-        contentView!!.findViewById<View>(R.id.btn_connect).visibility = View.GONE
-    }
-
-    /**
-     * Updates the UI with device data
-     *
-     * @param device the device to be displayed
-     */
-    fun showDetails(device: WifiP2pDevice) {
-        this.device = device
-        this.view!!.visibility = View.VISIBLE
-        var view =
-            contentView!!.findViewById<View>(R.id.device_address) as TextView
-        view.text = device.deviceAddress
-        view = contentView!!.findViewById<View>(R.id.device_info) as TextView
-        view.text = device.toString()
     }
 
     /**
      * Clears the UI fields after a disconnect or direct mode disable operation.
      */
     fun resetViews() {
-        contentView!!.findViewById<View>(R.id.btn_connect).visibility = View.VISIBLE
-        var view =
-            contentView!!.findViewById<View>(R.id.device_address) as TextView
-        view.setText(R.string.empty)
-        view = contentView!!.findViewById<View>(R.id.device_info) as TextView
-        view.setText(R.string.empty)
-        view = contentView!!.findViewById<View>(R.id.group_owner) as TextView
-        view.setText(R.string.empty)
-        view = contentView!!.findViewById<View>(R.id.status_text) as TextView
-        view.setText(R.string.empty)
         contentView!!.findViewById<View>(R.id.button_send).visibility = View.GONE
-        view.visibility = View.GONE
+        view?.visibility = View.GONE
     }
 
     private fun setupChat(contentView: View) {
@@ -169,8 +111,8 @@ open class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
         conversationArrayAdapter = ArrayAdapter<String>(context, R.layout.message)
         val mConversationView = contentView.findViewById<View>(R.id.`in`) as ListView
         mConversationView.adapter = conversationArrayAdapter
-        val mOutEditText = contentView.findViewById<View>(R.id.edit_text_out) as EditText
-        mOutEditText.setOnEditorActionListener(mWriteListener)
+        outEditText = contentView.findViewById<View>(R.id.edit_text_out) as EditText
+        outEditText?.setOnEditorActionListener(mWriteListener)
         val mSendButton = contentView.findViewById<View>(R.id.button_send) as Button
         mSendButton.setOnClickListener(View.OnClickListener {
             val view = contentView.findViewById<View>(R.id.edit_text_out) as TextView
@@ -199,10 +141,12 @@ open class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
                     8988,
                     message
                 )
-                conversationArrayAdapter?.add("Me: $message")
+                withContext(Dispatchers.Main) {
+                    conversationArrayAdapter?.add("Me: $message")
+                }
             }
             outStringBuffer!!.setLength(0)
-            outEditText!!.setText(outStringBuffer)
+            outEditText?.setText(outStringBuffer)
         }
     }
 }

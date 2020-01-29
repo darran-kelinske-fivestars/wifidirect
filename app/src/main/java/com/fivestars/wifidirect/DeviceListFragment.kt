@@ -18,6 +18,7 @@ package com.fivestars.wifidirect
 import android.app.ListFragment
 import android.app.ProgressDialog
 import android.content.Context
+import android.net.wifi.WpsInfo
 import android.net.wifi.p2p.WifiP2pConfig
 import android.net.wifi.p2p.WifiP2pDevice
 import android.net.wifi.p2p.WifiP2pDeviceList
@@ -71,7 +72,10 @@ class DeviceListFragment : ListFragment(), PeerListListener {
         id: Long
     ) {
         val device = listAdapter.getItem(position) as WifiP2pDevice
-        (activity as DeviceActionListener).showDetails(device)
+        val config = WifiP2pConfig()
+        config.deviceAddress = device!!.deviceAddress
+        config.wps.setup = WpsInfo.PBC
+        (activity as DeviceActionListener).connect(config)
     }
 
     /**
@@ -166,7 +170,6 @@ class DeviceListFragment : ListFragment(), PeerListListener {
      * events.
      */
     interface DeviceActionListener {
-        fun showDetails(device: WifiP2pDevice?)
         fun cancelConnect()
         fun connect(config: WifiP2pConfig?)
         fun disconnect()

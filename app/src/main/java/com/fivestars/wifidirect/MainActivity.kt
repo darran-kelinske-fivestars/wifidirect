@@ -3,21 +3,14 @@ package com.fivestars.wifidirect
 import android.Manifest
 import android.content.BroadcastReceiver
 import android.content.Context
-import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.net.wifi.p2p.WifiP2pConfig
 import android.net.wifi.p2p.WifiP2pDevice
 import android.net.wifi.p2p.WifiP2pManager
-import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceInfo
-import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceRequest
 import android.os.Build
 import android.os.Bundle
-import android.provider.Settings
 import android.util.Log
-import android.view.Menu
-import android.view.MenuInflater
-import android.view.MenuItem
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -84,7 +77,7 @@ class MainActivity : AppCompatActivity(), WifiP2pManager.ChannelListener,
         listFragment = fragmentManager
             .findFragmentById(R.id.frag_list) as DeviceListFragment
 
-        discover_and_connect_button.setOnClickListener {
+        discover_peers_button.setOnClickListener {
             discoverPeers()
         }
     }
@@ -112,50 +105,6 @@ class MainActivity : AppCompatActivity(), WifiP2pManager.ChannelListener,
     fun resetData() {
         listFragment?.clearPeers()
         detailsFragment?.resetViews()
-    }
-
-    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
-        val inflater: MenuInflater = menuInflater
-        inflater.inflate(R.menu.action_items, menu)
-        return true
-    }
-
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        return when (item.itemId) {
-            R.id.atn_direct_discover -> {
-                if (!isWifiP2pEnabled) {
-                    Toast.makeText(
-                        this@MainActivity, R.string.p2p_off_warning,
-                        Toast.LENGTH_SHORT
-                    ).show()
-                    return true
-                }
-                listFragment?.onInitiateDiscovery()
-                manager!!.discoverPeers(channel, object : WifiP2pManager.ActionListener {
-                    override fun onSuccess() {
-                        Toast.makeText(
-                            this@MainActivity, "Discovery Initiated",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
-
-                    override fun onFailure(reasonCode: Int) {
-                        Toast.makeText(
-                            this@MainActivity, "Discovery Failed : $reasonCode",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                })
-                true
-            }
-            else -> super.onOptionsItemSelected(item)
-        }
-    }
-
-    override fun showDetails(device: WifiP2pDevice?) {
-        if (device != null) {
-            detailsFragment?.showDetails(device)
-        }
     }
 
     override fun connect(config: WifiP2pConfig?) {

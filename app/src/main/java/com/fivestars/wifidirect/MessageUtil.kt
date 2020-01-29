@@ -33,7 +33,7 @@ object MessageUtil {
                 stream.write(byteArray, 0, len)
                 Log.d(MainActivity.TAG, "Client: Data written")
             } catch (e: IOException) {
-                Log.e(MainActivity.TAG, e.message)
+                Log.e(MainActivity.TAG, e.message ?: "Exception opening and sending message on socket.")
                 if (socket.isConnected) {
                     try {
                         socket.close()
