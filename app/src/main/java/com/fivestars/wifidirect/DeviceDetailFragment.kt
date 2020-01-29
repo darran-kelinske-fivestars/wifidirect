@@ -23,6 +23,7 @@ import android.net.wifi.p2p.WifiP2pDevice
 import android.net.wifi.p2p.WifiP2pInfo
 import android.net.wifi.p2p.WifiP2pManager.ConnectionInfoListener
 import android.os.Bundle
+import android.os.Message
 import android.util.Log
 import android.view.KeyEvent
 import android.view.LayoutInflater
@@ -34,6 +35,8 @@ import android.widget.TextView.OnEditorActionListener
 import com.fivestars.wifidirect.DeviceListFragment.DeviceActionListener
 import com.fivestars.wifidirect.MainActivity.Companion.TAG
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.asFlow
+import kotlinx.coroutines.flow.collect
 import java.io.IOException
 import java.net.ServerSocket
 
@@ -68,32 +71,16 @@ open class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
         this.info = info
         this.view?.visibility = View.VISIBLE
         if (info.groupFormed && info.isGroupOwner) {
-            GlobalScope.launch(newSingleThreadContext("IncomingSocket")) {
-                val buffer = ByteArray(1024)
-                var bytes: Int
-                val serverSocket = ServerSocket(8988)
-                val client = serverSocket.accept()
-                val inputStream = client.getInputStream()
-                // Keep listening to the InputStream while connected
-                while (true) {
-                    try { // Read from the InputStream
-                        Log.d(TAG, "Server: Socket opened")
+            MessageUtil.openSocket()
+        } else {
+            MessageUtil.connectToSocket(
+                info.groupOwnerAddress.hostAddress,
+                8988)
+        }
 
-                        bytes = inputStream.read(buffer)
-                        val readMessage = String(buffer,0, bytes)
-                        withContext(Dispatchers.Main) {
-                            conversationArrayAdapter!!.add("Received:  $readMessage")
-                        }
-                    } catch (e: IOException) {
-                        Log.e(
-                            TAG,
-                            "disconnected",
-                            e
-                        )
-
-                        break
-                    }
-                }
+        GlobalScope.launch(Dispatchers.Main) {
+            MessageUtil.channel.asFlow().collect {
+                conversationArrayAdapter?.add("Them $it")
             }
         }
     }
@@ -137,8 +124,6 @@ open class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
         if (message.isNotEmpty()) {
             GlobalScope.launch(Dispatchers.IO) {
                 MessageUtil.sendMessage(
-                    info!!.groupOwnerAddress.hostAddress,
-                    8988,
                     message
                 )
                 withContext(Dispatchers.Main) {
