@@ -104,6 +104,11 @@ class MainActivity : AppCompatActivity(), WifiP2pManager.ChannelListener,
         unregisterReceiver(receiver)
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        disconnect()
+    }
+
     fun resetData() {
         listFragment?.clearPeers()
         detailsFragment?.resetViews()
