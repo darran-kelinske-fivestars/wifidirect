@@ -90,8 +90,6 @@ object MessageUtil {
             // Keep listening to the InputStream while connected
             while (true) {
                 try { // Read from the InputStream
-                    Log.d(MainActivity.TAG, "Server: Socket opened")
-
                     bytes = inputStream.read(buffer)
                     stringBuffer.append(String(buffer,0, bytes))
                     readUntil()

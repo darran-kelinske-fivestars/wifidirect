@@ -15,6 +15,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/disconnect_peer_button" />
+
         <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
@@ -40,17 +41,24 @@
                 android:orientation="horizontal">
 
                 <Button
-                    android:id="@+id/button_send"
+                    android:id="@+id/button_unidirectional"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/send" />
+                    android:text="@string/unidirectional" />
 
-                <TextView
-                    android:id="@+id/text_view_status"
+                <Button
+                    android:id="@+id/button_bidirectional"
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content" />
+                    android:layout_height="wrap_content"
+                    android:text="@string/bidirectional" />
+
             </LinearLayout>
+            <TextView
+                android:id="@+id/text_view_status"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
         </LinearLayout>
+
 
     </LinearLayout>
 </FrameLayout>

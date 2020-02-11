@@ -51,7 +51,6 @@ open class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
     private var totalBytesReceived: AtomicLong = AtomicLong(0)
     private var startTime: AtomicLong = AtomicLong(0)
     private var byteArrayPayload = ByteArray(256)
-    private val random = Random()
     private var readJob = Job()
 
     override fun onCreateView(
@@ -96,7 +95,37 @@ open class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
             }
         }
 
-        setupChat()
+        button_bidirectional.setOnClickListener {
+            setPayLoadSizeAndStartTime()
+            randomizeAndSendMessage(MessageType.BIDIRECTIONAL)
+
+        }
+
+        button_unidirectional.setOnClickListener {
+            setPayLoadSizeAndStartTime()
+
+            CoroutineScope(Dispatchers.IO + readJob).launch {
+                while (true) {
+                    randomizeAndSendMessage(MessageType.UNIDIRECTIONAL)
+                }
+            }
+        }
+    }
+
+    private fun randomizeAndSendMessage(messageType: MessageType) {
+        currentMessage = TestMessage(
+            Date().time,
+            messageType,
+            String(byteArrayPayload)
+        )
+        sendMessage(adapter.toJson(currentMessage))
+    }
+
+    private fun setPayLoadSizeAndStartTime() {
+        val payloadSize = edit_text_payload_size.text.toString()
+        edit_text_payload_size.isEnabled = false
+        byteArrayPayload = ByteArray(payloadSize.toInt())
+        startTime = AtomicLong(Date().time)
     }
 
     override fun onConnectionInfoAvailable(info: WifiP2pInfo) {
@@ -115,7 +144,14 @@ open class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
 
         CoroutineScope(Dispatchers.IO + readJob).launch {
             MessageUtil.readChannel?.asFlow()?.collect {
-                val parsedMessage = adapter.fromJson(it)
+                var parsedMessage: TestMessage?
+
+                try {
+                    parsedMessage = adapter.fromJson(it)
+                } catch (e: java.lang.Exception) {
+                    Log.e(TAG, e.toString() + "data was: it")
+                    return@collect
+                }
                 totalBytesReceived.getAndAdd(it.toByteArray().size.toLong())
                 if (startTime.get() == 0L) {
                     startTime = AtomicLong(Date().time)
@@ -142,21 +178,7 @@ open class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
      * Clears the UI fields after a disconnect or direct mode disable operation.
      */
     fun resetViews() {
-        job?.cancel()
         view?.visibility = View.GONE
-    }
-
-    private fun setupChat() {
-        button_send.setOnClickListener {
-            val payloadSize = edit_text_payload_size.text.toString()
-            edit_text_payload_size.isEnabled = false
-            byteArrayPayload = ByteArray(payloadSize.toInt())
-            startTime = AtomicLong(Date().time)
-            random.nextBytes(byteArrayPayload)
-            currentMessage = TestMessage(Date().time, MessageType.BIDIRECTIONAL, String(byteArrayPayload))
-            sendMessage(adapter.toJson(currentMessage))
-        }
-
     }
 
     private fun sendMessage(message: String) {
