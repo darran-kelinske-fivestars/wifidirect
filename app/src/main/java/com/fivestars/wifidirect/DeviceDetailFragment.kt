@@ -21,29 +21,38 @@ import android.net.wifi.p2p.WifiP2pInfo
 import android.net.wifi.p2p.WifiP2pManager.ConnectionInfoListener
 import android.os.Bundle
 import android.util.Log
-import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.view.inputmethod.EditorInfo
-import android.widget.*
-import android.widget.TextView.OnEditorActionListener
+import com.fivestars.wifidirect.model.TestMessage
 import com.fivestars.wifidirect.DeviceListFragment.DeviceActionListener
 import com.fivestars.wifidirect.MainActivity.Companion.TAG
+import com.fivestars.wifidirect.model.MessageType
+import com.squareup.moshi.JsonAdapter
+import com.squareup.moshi.Moshi
+import kotlinx.android.synthetic.main.device_detail.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.collect
+import java.util.*
+import java.util.concurrent.atomic.AtomicLong
 
 
 open class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
-    private var outEditText: EditText? = null
-    private var conversationArrayAdapter: ArrayAdapter<String>? = null
-    private var outStringBuffer: StringBuffer? = null
 
     private var contentView: View? = null
     private var info: WifiP2pInfo? = null
     private var progressDialog: ProgressDialog? = null
     private var job: Job? = null
+    private val moshi: Moshi = Moshi.Builder().build()
+    private val adapter: JsonAdapter<TestMessage> = moshi.adapter(TestMessage::class.java)
+    private var currentMessage: TestMessage? = null
+    private var totalBytesSent: AtomicLong = AtomicLong(0)
+    private var totalBytesReceived: AtomicLong = AtomicLong(0)
+    private var startTime: AtomicLong = AtomicLong(0)
+    private var byteArrayPayload = ByteArray(256)
+    private val random = Random()
+    private var readJob = Job()
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -54,8 +63,40 @@ open class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
         contentView?.findViewById<View>(R.id.btn_disconnect)
             ?.setOnClickListener { (activity as DeviceActionListener).disconnect() }
 
-        setupChat(contentView!!)
         return contentView
+    }
+
+    override fun onViewCreated(view: View?, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+
+        CoroutineScope(Dispatchers.Default + readJob).launch {
+            while (true) {
+                val totalTimeInSeconds: Long = ((Date().time - startTime.get())) / 1000
+                try {
+                    withContext(Dispatchers.Main) {
+
+                        var totalBytesSentSecond: Long = 0
+
+                        if (totalBytesSent.get() != 0L) {
+                            totalBytesSentSecond = (totalBytesSent.get() / totalTimeInSeconds)
+                        }
+
+                        var totalBytesReceivedSecond: Long = 0
+
+                        if (totalBytesReceived.get() != 0L) {
+                            totalBytesReceivedSecond = (totalBytesReceived.get() / totalTimeInSeconds)
+                        }
+                        text_view_status.text =
+                            "Total bytes sent: $totalBytesSent \nBytes/second sent: $totalBytesSentSecond\nTotal bytes received: $totalBytesReceived\nBytes/second received: $totalBytesReceivedSecond"
+                    }
+                } catch (e: Exception) {
+                    Log.d(TAG, "The divide by zero" + e)
+                }
+                Thread.sleep(2000)
+            }
+        }
+
+        setupChat()
     }
 
     override fun onConnectionInfoAvailable(info: WifiP2pInfo) {
@@ -71,9 +112,28 @@ open class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
                 info.groupOwnerAddress.hostAddress,
                 8988)
         }
-        job = CoroutineScope(Dispatchers.Main).launch {
-            MessageUtil.channel.asFlow().collect {
-                conversationArrayAdapter?.add("Them: $it")
+
+        CoroutineScope(Dispatchers.IO + readJob).launch {
+            MessageUtil.readChannel?.asFlow()?.collect {
+                val parsedMessage = adapter.fromJson(it)
+                totalBytesReceived.getAndAdd(it.toByteArray().size.toLong())
+                if (startTime.get() == 0L) {
+                    startTime = AtomicLong(Date().time)
+                }
+                if (currentMessage == null && parsedMessage?.messageType == MessageType.BIDIRECTIONAL) {
+                    sendMessage(it)
+                } else {
+                    parsedMessage?.run {
+                        if (time == currentMessage?.time) {
+                            currentMessage = TestMessage(
+                                Date().time, MessageType.BIDIRECTIONAL, String(
+                                    byteArrayPayload
+                                )
+                            )
+                            sendMessage(adapter.toJson(currentMessage))
+                        }
+                    }
+                }
             }
         }
     }
@@ -86,46 +146,28 @@ open class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
         view?.visibility = View.GONE
     }
 
-    private fun setupChat(contentView: View) {
-        Log.d(TAG, "setupChat()")
-        conversationArrayAdapter = ArrayAdapter(context, R.layout.message)
-        val mConversationView = contentView.findViewById<View>(R.id.`in`) as ListView
-        mConversationView.adapter = conversationArrayAdapter
-        outEditText = contentView.findViewById<View>(R.id.edit_text_out) as EditText
-        outEditText?.setOnEditorActionListener(mWriteListener)
-        val sendButton = contentView.findViewById<View>(R.id.button_send) as Button
-        sendButton.visibility = View.VISIBLE
-        sendButton.setOnClickListener {
-            val view = contentView.findViewById<View>(R.id.edit_text_out) as TextView
-            val message = view.text.toString()
-            sendMessage(message)
+    private fun setupChat() {
+        button_send.setOnClickListener {
+            val payloadSize = edit_text_payload_size.text.toString()
+            edit_text_payload_size.isEnabled = false
+            byteArrayPayload = ByteArray(payloadSize.toInt())
+            startTime = AtomicLong(Date().time)
+            random.nextBytes(byteArrayPayload)
+            currentMessage = TestMessage(Date().time, MessageType.BIDIRECTIONAL, String(byteArrayPayload))
+            sendMessage(adapter.toJson(currentMessage))
         }
-        outStringBuffer = StringBuffer("")
-    }
 
-    // The action listener for the EditText widget, to listen for the return key
-    private val mWriteListener =
-        OnEditorActionListener { view, actionId, event ->
-            // If the action is a key-up event on the return key, send the message
-            if (actionId == EditorInfo.IME_NULL && event.action == KeyEvent.ACTION_UP) {
-                val message = view.text.toString()
-                sendMessage(message)
-            }
-            true
-        }
+    }
 
     private fun sendMessage(message: String) {
         if (message.isNotEmpty()) {
+            val messageByteArray = (message +"\n").toByteArray()
+            totalBytesSent.getAndAdd(messageByteArray.size.toLong())
             CoroutineScope(Dispatchers.IO).launch {
                 MessageUtil.sendMessage(
-                    message
+                    messageByteArray
                 )
-                withContext(Dispatchers.Main) {
-                    conversationArrayAdapter?.add("Me: $message")
-                }
             }
-            outStringBuffer!!.setLength(0)
-            outEditText?.setText(outStringBuffer)
         }
     }
 }

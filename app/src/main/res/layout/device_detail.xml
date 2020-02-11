@@ -16,36 +16,41 @@
                 android:layout_height="wrap_content"
                 android:text="@string/disconnect_peer_button" />
         <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-            android:orientation="vertical"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:layout_weight="1"
-            >
-            <ListView android:id="@+id/in"
+            android:orientation="vertical">
+
+            <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:stackFromBottom="true"
-                android:transcriptMode="alwaysScroll"
-                android:layout_weight="1"
-                />
+                android:layout_height="wrap_content">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/edit_text_payload_size"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Payload Size"
+                    android:inputType="number"
+                    android:text="256" />
+
+            </com.google.android.material.textfield.TextInputLayout>
+
             <LinearLayout
-                android:orientation="horizontal"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                >
-                <EditText android:id="@+id/edit_text_out"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/button_send"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_gravity="bottom"
-                    />
-                <Button android:id="@+id/button_send"
+                    android:text="@string/send" />
+
+                <TextView
+                    android:id="@+id/text_view_status"
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/send"
-                    android:visibility="visible"
-                    />
+                    android:layout_height="wrap_content" />
             </LinearLayout>
         </LinearLayout>
+
     </LinearLayout>
 </FrameLayout>

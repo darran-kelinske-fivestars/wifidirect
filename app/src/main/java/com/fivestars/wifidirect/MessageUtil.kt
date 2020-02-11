@@ -16,8 +16,9 @@ object MessageUtil {
     private var serverSocket = ServerSocket()
     private var job: Job? = null
     private const val SOCKET_TIMEOUT = 0
-    val channel = BroadcastChannel<String>(1)
+    val readChannel = BroadcastChannel<String>(1)
     private val dispatcher = newSingleThreadContext("CommunicationSocket")
+    val stringBuffer = StringBuffer()
 
     fun openSocket() {
         job = CoroutineScope(dispatcher).launch {
@@ -27,15 +28,14 @@ object MessageUtil {
                 serverSocket.bind(InetSocketAddress(8988))
             }
             socket = serverSocket.accept()
+            Log.d(MainActivity.TAG, "Server: Accepting connections")
             val inputStream = socket.getInputStream()
             // Keep listening to the InputStream while connected
             while (true) {
                 try { // Read from the InputStream
-                    Log.d(MainActivity.TAG, "Server: Socket opened")
-
                     bytes = inputStream.read(buffer)
-                    val readMessage = String(buffer,0, bytes)
-                    channel.offer(readMessage)
+                    stringBuffer.append(String(buffer,0, bytes))
+                    readUntil()
                 } catch (e: IOException) {
                     Log.e(
                         MainActivity.TAG,
@@ -48,6 +48,22 @@ object MessageUtil {
             }
         }
     }
+
+
+    private fun readUntil() {
+        var data = ""
+        val index: Int = stringBuffer.indexOf("\n", 0)
+        if (index > -1) {
+            data = stringBuffer.substring(0, index + "\n".length)
+            stringBuffer.delete(0, index + "\n".length)
+        }
+
+        if (data.isNotEmpty()) {
+            readChannel.offer(data.trim())
+        }
+
+    }
+
 
     fun closeSocket() {
         socket.close()
@@ -77,8 +93,8 @@ object MessageUtil {
                     Log.d(MainActivity.TAG, "Server: Socket opened")
 
                     bytes = inputStream.read(buffer)
-                    val readMessage = String(buffer,0, bytes)
-                    channel.offer(readMessage)
+                    stringBuffer.append(String(buffer,0, bytes))
+                    readUntil()
                 } catch (e: IOException) {
                     Log.e(
                         MainActivity.TAG,
@@ -92,13 +108,11 @@ object MessageUtil {
         }
     }
 
-    fun sendMessage(message: String) {
+    fun sendMessage(message: ByteArray) {
             try {
                 Log.d(MainActivity.TAG, "Client socket is connected: " + socket.isConnected)
                 val stream: OutputStream = socket.getOutputStream()
-                val byteArray = message.toByteArray()
-                val len: Int = byteArray.size
-                stream.write(byteArray, 0, len)
+                stream.write(message)
                 Log.d(MainActivity.TAG, "Client: Data written")
             } catch (e: IOException) {
                 Log.e(MainActivity.TAG, e.message ?: "Exception opening and sending message on socket.")
