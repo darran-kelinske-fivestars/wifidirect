@@ -105,6 +105,7 @@ open class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
             setPayLoadSizeAndStartTime()
 
             CoroutineScope(Dispatchers.IO + readJob).launch {
+                // YOLO
                 while (true) {
                     randomizeAndSendMessage(MessageType.UNIDIRECTIONAL)
                 }
