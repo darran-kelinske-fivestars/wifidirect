@@ -142,9 +142,9 @@ open class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
                 8988)
         }
 
-        CoroutineScope(Dispatchers.IO + readJob).launch {
-            MessageUtil.readChannel?.asFlow()?.collect {
-                var parsedMessage: TestMessage?
+        CoroutineScope(newFixedThreadPoolContext(1, "uno") + readJob).launch {
+            MessageUtil.readChannel.asFlow().collect {
+                val parsedMessage: TestMessage?
 
                 try {
                     parsedMessage = adapter.fromJson(it)
