@@ -160,7 +160,7 @@ open class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
                     sendMessage(it)
                 } else {
                     parsedMessage?.run {
-                        if (time == currentMessage?.time) {
+                        if (time == currentMessage?.time && messageType == MessageType.BIDIRECTIONAL) {
                             currentMessage = TestMessage(
                                 Date().time, MessageType.BIDIRECTIONAL, String(
                                     byteArrayPayload
