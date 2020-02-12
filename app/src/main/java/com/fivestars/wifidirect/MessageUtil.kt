@@ -108,10 +108,8 @@ object MessageUtil {
 
     fun sendMessage(message: ByteArray) {
             try {
-                Log.d(MainActivity.TAG, "Client socket is connected: " + socket.isConnected)
                 val stream: OutputStream = socket.getOutputStream()
                 stream.write(message)
-                Log.d(MainActivity.TAG, "Client: Data written")
             } catch (e: IOException) {
                 Log.e(MainActivity.TAG, e.message ?: "Exception opening and sending message on socket.")
                 if (socket.isConnected) {

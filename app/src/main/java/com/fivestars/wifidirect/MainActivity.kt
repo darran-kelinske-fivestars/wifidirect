@@ -138,6 +138,7 @@ class MainActivity : AppCompatActivity(), WifiP2pManager.ChannelListener,
 
             override fun onSuccess() {
                 detailsFragment?.view!!.visibility = View.GONE
+                detailsFragment?.view!!.visibility = View.GONE
                 MessageUtil.closeSocket()
 
             }

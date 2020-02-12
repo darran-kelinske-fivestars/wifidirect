@@ -44,7 +44,8 @@ open class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
     private var info: WifiP2pInfo? = null
     private var progressDialog: ProgressDialog? = null
     private var job: Job? = null
-    private val moshi: Moshi = Moshi.Builder().build()
+    private val moshi: Moshi = Moshi.Builder()
+        .build()
     private val adapter: JsonAdapter<TestMessage> = moshi.adapter(TestMessage::class.java)
     private var currentMessage: TestMessage? = null
     private var totalBytesSent: AtomicLong = AtomicLong(0)
@@ -104,7 +105,7 @@ open class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
         button_unidirectional.setOnClickListener {
             setPayLoadSizeAndStartTime()
 
-            CoroutineScope(Dispatchers.IO + readJob).launch {
+            CoroutineScope(newSingleThreadContext("uni")+ readJob).launch {
                 // YOLO
                 while (true) {
                     randomizeAndSendMessage(MessageType.UNIDIRECTIONAL)
@@ -145,15 +146,14 @@ open class DeviceDetailFragment : Fragment(), ConnectionInfoListener {
 
         CoroutineScope(newFixedThreadPoolContext(1, "uno") + readJob).launch {
             MessageUtil.readChannel.asFlow().collect {
+                totalBytesReceived.getAndAdd(it.toByteArray().size.toLong())
                 val parsedMessage: TestMessage?
-
                 try {
                     parsedMessage = adapter.fromJson(it)
                 } catch (e: java.lang.Exception) {
                     Log.e(TAG, e.toString() + "data was: it")
                     return@collect
                 }
-                totalBytesReceived.getAndAdd(it.toByteArray().size.toLong())
                 if (startTime.get() == 0L) {
                     startTime = AtomicLong(Date().time)
                 }
